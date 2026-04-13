@@ -8,7 +8,7 @@ print("=== BOSS EMPIRE SCANNER ACTIVATED ===")
 
 # --- 1. Configuration ---
 genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
-model = genai.GenerativeModel('gemini-2.0-flash-exp')  # FIXED LINE
+model = genai.GenerativeModel('gemini-flash-latest')  # FIXED LINE
 
 RAPIDAPI_KEY = os.environ['RAPIDAPI_KEY']
 RAPIDAPI_HOST = os.environ['RAPIDAPI_HOST']
