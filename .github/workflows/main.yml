@@ -39,3 +39,30 @@ jobs:
         with:
           name: Product-URL
           path: latest_product_url.txt
+  tweet:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Product URL
+        uses: actions/download-artifact@v4
+        with:
+          name: Product-URL
+
+      - name: Read URL and Compose Tweet
+        id: vars
+        run: |
+          PRODUCT_URL=$(cat latest_product_url.txt)
+          echo "TWEET_TEXT=🚀 New market gap detected. Fresh intelligence just dropped. Limited copies available. 👇 $PRODUCT_URL" >> $GITHUB_OUTPUT
+
+      - name: Send Tweet
+        uses: smapiot/send-tweet-v2-action@v2
+        with:
+          status: ${{ steps.vars.outputs.TWEET_TEXT }}
+          consumer-key: ${{ secrets.TWITTER_API_KEY }}
+          consumer-secret: ${{ secrets.TWITTER_API_KEY_SECRET }}
+          access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
