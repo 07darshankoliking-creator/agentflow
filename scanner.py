@@ -35,10 +35,39 @@ GUMROAD_ACCESS_TOKEN = os.environ.get('GUMROAD_ACCESS_TOKEN', '')
 
 # --- 2. Data Fetch (Fallback to Simulated) ---
 def fetch_reddit_prompts():
-    print("[*] Attempting to fetch Reddit prompts...")
-    # We'll use fallback for now to ensure the pipeline works
-    # Once everything is stable, we can fix RapidAPI integration
-    return get_fallback_prompts()
+    print("[*] Scanning Reddit for AI prompt discussions...")
+    
+    url = "https://reddit-scraper2.p.rapidapi.com/search_posts_v2"
+    querystring = {
+        "query": "AI prompt help OR ChatGPT prompt",
+        "sort": "NEW",
+        "limit": "20"
+    }
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": RAPIDAPI_HOST
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, params=querystring, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            posts = data.get('data', []) or data.get('posts', [])
+            prompts = []
+            for post in posts[:15]:
+                title = post.get('title', '')
+                body = post.get('description', '') or post.get('body', '') or ''
+                combined = f"{title}. {body}"[:500]
+                if len(combined) > 20:
+                    prompts.append(combined)
+            if prompts:
+                print(f"[+] Captured {len(prompts)} real Reddit prompts.")
+                return prompts
+        print("[!] Reddit scrape failed, using fallback.")
+        return get_fallback_prompts()
+    except Exception as e:
+        print(f"[!] Reddit error: {e}. Using fallback.")
+        return get_fallback_prompts()
 
 def get_fallback_prompts():
     print("[*] Using fallback prompt dataset (real scraping to be enabled after stable).")
