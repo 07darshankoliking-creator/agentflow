@@ -2,9 +2,8 @@ name: Shadow Economy Scanner
 
 on:
   schedule:
-    # Runs every Sunday at 00:00 UTC (Adjust as needed)
     - cron: '0 0 * * 0'
-  workflow_dispatch: # This allows you to run it manually with a button
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,16 +18,24 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests google-generativeai
+        run: |
+          pip install --upgrade pip
+          pip install requests google-generativeai
 
       - name: Run Scanner Script
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
-          GUMROAD_CLIENT_ID: ${{ secrets.GUMROAD_CLIENT_ID }}
-          GUMROAD_CLIENT_SECRET: ${{ secrets.GUMROAD_CLIENT_SECRET }}
-        run: |
-          echo "Scanner is starting..."
-          # We will add the Python script file next.
-          python scanner.py
+          GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+        run: python scanner.py
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shadow-Economy-Report
+          path: report_*.txt
+
+      - name: Upload Product URL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Product-URL
+          path: latest_product_url.txt
