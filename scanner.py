@@ -119,7 +119,43 @@ Offer it as a lead magnet for the "Shovel Idea" market.
         f.write(report_content)
     print(f"[+] Report saved locally as {filename}")
     return filename, report_content, analysis
-
+def create_gumroad_product(report_content, analysis):
+    print("[*] Publishing to Gumroad...")
+    
+    parts = analysis.split(':')
+    if len(parts) >= 3:
+        niche = parts[0].strip().strip('[]')
+    else:
+        niche = "Market Gap"
+    
+    date_str = datetime.now().strftime("%b %d, %Y")
+    product_title = f"Shadow Economy Report: {niche} - {date_str}"
+    
+    url = "https://api.gumroad.com/v2/products"
+    headers = {
+        "Authorization": f"Bearer {GUMROAD_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "name": product_title,
+        "description": report_content,
+        "price": 4900,  # $49.00 in cents
+        "max_purchase_count": 50,
+        "custom_permalink": f"shadow-report-{datetime.now().strftime('%Y%m%d%H%M')}",
+        "published": True
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        if response.status_code in [200, 201]:
+            data = response.json()
+            return data['product']['short_url']
+        else:
+            print(f"[!] Gumroad error: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"[!] Gumroad exception: {e}")
+        return None
 # --- 5. Main Execution ---
 def main():
     prompts = fetch_reddit_prompts()
@@ -132,8 +168,16 @@ def main():
     
     filename, report_content, _ = create_report(analysis)
     
-    # Skip Gumroad for now; we'll add after stable
+    # Auto-publish to Gumroad if token exists
+    if GUMROAD_ACCESS_TOKEN and len(GUMROAD_ACCESS_TOKEN) > 10:
+        product_url = create_gumroad_product(report_content, analysis)
+        if product_url:
+            print(f"\n✅ PRODUCT LIVE: {product_url}")
+            with open("latest_product_url.txt", "w") as f:
+                f.write(product_url)
+        else:
+            print("\n⚠️ Gumroad publish failed. Check token.")
+    else:
+        print("\n⚠️ Gumroad token missing. Skipping publish.")
+    
     print("\n=== MISSION COMPLETE. BOSS OUT. ===")
-
-if __name__ == "__main__":
-    main()
