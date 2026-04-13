@@ -8,7 +8,7 @@ print("=== BOSS EMPIRE SCANNER ACTIVATED ===")
 
 # --- Configuration ---
 genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
-model = genai.GenerativeModel('models/gemini-2.0-flash')  # CONFIRMED WORKING MODEL
+model = genai.GenerativeModel('models/gemini-2.5-flash')  # ← THE ONLY CHANGE
 
 GUMROAD_ACCESS_TOKEN = os.environ.get('GUMROAD_ACCESS_TOKEN', '')
 
