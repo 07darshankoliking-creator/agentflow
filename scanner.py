@@ -4,71 +4,172 @@ import json
 import google.generativeai as genai
 from datetime import datetime
 
-print("Boss, I am starting the scan...")
+print("=== BOSS EMPIRE SCANNER ACTIVATED ===")
 
-# 1. Setup Keys
+# --- 1. Configuration ---
 genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash-exp')  # FIXED LINE
 
-# 2. Fake Data Function (FREE DEMO MODE - Real RapidAPI integration later)
-# This simulates fetching trending AI prompts so we don't get blocked by RapidAPI on first run.
-def get_trending_prompts():
-    print("Scanning the underground AI prompt networks...")
-    # Simulated data that looks like real scraped prompts
+RAPIDAPI_KEY = os.environ['RAPIDAPI_KEY']
+RAPIDAPI_HOST = os.environ['RAPIDAPI_HOST']
+GUMROAD_ACCESS_TOKEN = os.environ['GUMROAD_ACCESS_TOKEN']
+
+# --- 2. Real Data Fetch from Reddit (via RapidAPI) ---
+def fetch_reddit_prompts():
+    print("[*] Scanning Reddit for AI prompt discussions...")
+    
+    url = "https://reddit-scraper2.p.rapidapi.com/search_posts_v2"
+    
+    querystring = {
+        "query": "AI prompt help",
+        "sort": "NEW",
+        "limit": "20"
+    }
+    
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": RAPIDAPI_HOST
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, params=querystring, timeout=15)
+        print(f"[*] RapidAPI response status: {response.status_code}")
+        if response.status_code == 200:
+            data = response.json()
+            posts = data.get('data', []) or data.get('posts', [])
+            prompts = []
+            for post in posts[:15]:
+                title = post.get('title', '')
+                body = post.get('description', '') or post.get('body', '') or ''
+                combined = f"{title}. {body}"[:500]
+                if len(combined) > 20:
+                    prompts.append(combined)
+            if prompts:
+                print(f"[+] Captured {len(prompts)} real prompts from Reddit.")
+                return prompts
+            else:
+                print("[!] No prompts found in response. Using fallback.")
+                return get_fallback_prompts()
+        else:
+            print(f"[!] RapidAPI error: {response.status_code} - {response.text[:200]}")
+            return get_fallback_prompts()
+    except Exception as e:
+        print(f"[!] Exception during fetch: {e}")
+        return get_fallback_prompts()
+
+def get_fallback_prompts():
+    print("[*] Using fallback prompt dataset.")
     return [
-        "Help me write a 30-day email sequence for selling a 'Seniors Fitness Tracker' app.",
+        "I need a 30-day email sequence for a 'Seniors Fitness Tracker' app.",
         "Generate 50 catchy names for a 'Purple Dog Shampoo' brand.",
-        "I need a script to automatically fix 'CapCut Blurry Export' on iPhone 16.",
-        "Best niche for a new YouTube channel in 2026 with zero face.",
-        "Write a cold DM to a real estate agent offering AI video editing services.",
-        "I want to build a simple tool that checks WiFi stability for Roblox players.",
-        "What is the best AI tool to remove background noise from voiceover audio?",
-        "Create a checklist for onboarding a new virtual assistant.",
-        "How to get my first 10 clients for my web design agency.",
-        "I need a Notion template for managing my freelance writing projects."
+        "Script to automatically fix 'CapCut Blurry Export' on iPhone 16.",
+        "Best niche for a new YouTube channel in 2026 without showing face.",
+        "Cold DM template for real estate agents offering AI video editing.",
     ]
 
-# 3. AI Analysis (The "Gap Finder")
+# --- 3. AI Analysis ---
 def analyze_prompts(prompts):
+    print("[*] AI analyzing market gaps...")
     prompt_text = "\n".join(prompts)
     instruction = """
-    You are a business intelligence analyst. Review the following list of raw AI prompts from users.
+    You are a business intelligence analyst. Review the following raw AI prompts from users.
     Identify the ONE niche where people are actively trying to build a solution, but there is a clear gap in the market for a specific tool or service to connect them to customers.
-    Format your answer exactly like this:
+    Format your answer EXACTLY like this (3 parts separated by colons):
     [Niche Name] : [The Identified Gap] : [Proposed Shovel Idea]
     
-    Example Output:
+    Example:
     [CapCut Video Editors] : [Frustration with export settings on iPhone 16] : [A one-click preset converter tool]
     """
     response = model.generate_content([instruction, prompt_text])
-    return response.text
+    return response.text.strip()
 
-# 4. Create the Report (PDF-ish Text File)
+# --- 4. Create Report Text ---
 def create_report(analysis):
     date_str = datetime.now().strftime("%Y-%m-%d")
     report_content = f"""
-SHADOW ECONOMY REPORT - WEEK OF {date_str}
+SHADOW ECONOMY REPORT - {date_str}
 ============================================
 Generated by The Boss's AI Swarm.
-This report identifies where the market is moving BEFORE it happens.
 
 RAW INTEL ANALYSIS:
 {analysis}
 
-RECOMMENDED ACTION FOR THIS WEEK:
-Build a simple, free tool or a PDF guide addressing the gap identified above.
-Offer it as a lead magnet for the "Shovel Idea".
+RECOMMENDED ACTION:
+Build a simple tool or guide addressing the gap above. 
+Offer it as a lead magnet for the "Shovel Idea" market.
 """
     filename = f"report_{date_str}.txt"
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(report_content)
-    print(f"Report saved to {filename}")
-    return filename
+    print(f"[+] Report saved locally as {filename}")
+    return filename, report_content, analysis
 
-# 5. Run the Mission
-prompts = get_trending_prompts()
-analysis = analyze_prompts(prompts)
-report_file = create_report(analysis)
+# --- 5. Upload to Gumroad ---
+def create_gumroad_product(report_content, analysis):
+    print("[*] Publishing to Gumroad...")
+    
+    parts = analysis.split(':')
+    if len(parts) >= 3:
+        niche = parts[0].strip().strip('[]')
+        gap = parts[1].strip()
+    else:
+        niche = "Market Gap"
+        gap = analysis[:50]
+    
+    date_str = datetime.now().strftime("%b %d, %Y")
+    product_title = f"Shadow Economy Report: {niche} - {date_str}"
+    
+    url = "https://api.gumroad.com/v2/products"
+    
+    headers = {
+        "Authorization": f"Bearer {GUMROAD_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "name": product_title,
+        "description": report_content,
+        "price": 4900,  # $49.00 in cents
+        "max_purchase_count": 50,
+        "custom_permalink": f"shadow-report-{datetime.now().strftime('%Y%m%d%H%M')}",
+        "published": True
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        if response.status_code in [200, 201]:
+            data = response.json()
+            product_url = data['product']['short_url']
+            print(f"[$$$] PRODUCT LIVE: {product_url}")
+            return product_url
+        else:
+            print(f"[!] Gumroad error: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        print(f"[!] Gumroad upload failed: {e}")
+        return None
 
-print(f"Mission Complete, Boss. File ready: {report_file}")
-print("You can find this file in the Actions log or commit it to the repo.")
+# --- 6. Main Execution ---
+def main():
+    prompts = fetch_reddit_prompts()
+    if not prompts:
+        print("[!] No prompts found. Exiting.")
+        return
+    
+    analysis = analyze_prompts(prompts)
+    print(f"[+] Analysis: {analysis}")
+    
+    filename, report_content, _ = create_report(analysis)
+    product_url = create_gumroad_product(report_content, analysis)
+    
+    if product_url:
+        print(f"\n✅ EMPIRE REPORT PUBLISHED: {product_url}")
+        with open("latest_product_url.txt", "w") as f:
+            f.write(product_url)
+    else:
+        print("\n⚠️ Report generated but Gumroad upload failed.")
+    
+    print("=== MISSION COMPLETE. BOSS OUT. ===")
+
+if __name__ == "__main__":
+    main()
