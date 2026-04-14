@@ -24,7 +24,7 @@ def create_pdf(niche, prompts):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 20)
-    pdf.cell(0, 20, f"{count} {niche}", ln=True, align='C')
+    pdf_cell(0, 20, f"{i+1}. {prompt}", ln=True, align='L')
     pdf.set_font("Arial", "", 11)
     for p in prompts:
         pdf.multi_cell(0, 8, p)
